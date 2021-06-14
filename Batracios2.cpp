@@ -32,9 +32,9 @@
 #define SIGNAL(i) sem_signal( i) //Operacion SIGNAL
 //Globales
 typedef struct {
-    int r_nacidas;
-    int r_salvadas;
-    int r_perdidas;
+    LONG r_nacidas;
+    LONG r_salvadas;
+    LONG r_perdidas;
     BOOL terminar;
     DWORD pid[30];
     int dx[30];
@@ -67,6 +67,7 @@ int cargar_libreria( int *fase_ext);
 void f_criar(int pos);
 DWORD WINAPI rana_madre( LPVOID parametro);
 DWORD WINAPI rana_hija( LPVOID parametro);
+DWORD WINAPI TRONCOS( LPVOID parametro);
 int sem_wait( int indice);
 int sem_signal( int indice);
 void Esperar_sem(int posicion);
@@ -161,7 +162,7 @@ int main(int argc, char const* argv[])
 		idSemaforo[i]=CreateSemaphore( NULL, 1, 1, NULL);		
 	}
 	//INICIO_RANAS( delta_t,  lTroncos[],  lAguas[], dirs[],  t_Criar,  CRIAR);
-
+	
 
 	//Crear productoras
 	for(j=0;j<4;j++){
@@ -185,7 +186,8 @@ int main(int argc, char const* argv[])
 	for (l= 0; l < 4; l++) {
     	WaitForSingleObject( hilo[l], INFINITE);
   	}
-		
+	COMPROBAR_ESTADISTICAS(m.nacidas,m.salvadas,m.perdidas)	;
+	FIN_RANAS();
 	//Liberar memoria
 	free(m);
 	//Cerrar los semaforos
@@ -195,7 +197,7 @@ int main(int argc, char const* argv[])
 }
 
 
-
+////-------------------------------
 void f_criar (int pos){
 	PARTO_RANAS(pos);
 	m.dx[pos]=15+16*pos;
@@ -318,7 +320,38 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	m.pid[orden]=-2;
 	
 }
-
+DWORD WINAPI TRONCOS( LPVOID parametro){
+	int fila;
+	while(m.terminar){
+		for(fila=0; fila<7 &&m.terminar){
+			WAIT(fila+8);
+			if(!(m.terminar)){
+				break;
+			}
+			WAIT(SEM_MEMORIA);
+			if(!(m.terminar)){
+				break;
+			}
+			if(AVANCE_TRONCOS(fila)==FALSE){
+				break;
+			}
+			for(i=0; i<30;i++){
+				if(m.dy[i]==(10-fila)){
+					if(dirs[fila]==DERECHA){
+						m.dx[i]++;
+					}else{
+						m.dx[i]--;
+					}
+				}
+			}
+			SIGNAL(fila+8);
+			SIGNAL(SEM_MEMORIA);
+			if(PAUSA()==FALSE){
+				break;
+			}
+		}
+	}
+}
 void Esperar_sem(int posicion){
 	if(posicion==3){
 		SIGNAL(SEM_TRONCOS0);
