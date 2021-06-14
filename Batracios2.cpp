@@ -69,7 +69,8 @@ DWORD WINAPI rana_madre( LPVOID parametro);
 DWORD WINAPI rana_hija( LPVOID parametro);
 int sem_wait( int indice);
 int sem_signal( int indice);
-
+void Esperar_sem(int posicion);
+void Liberar_sem(int posicion);
 
 int main(int argc, char const* argv[])
 {
@@ -220,20 +221,32 @@ SINGAL(SEM_HILO)
 			if(!(m.terminar)){
 				break;
 			}
-			
+			if(m.id[i]=-2){
+				 WaitForSingleObject(m.hilo[i], INFINITE);
+				 m.id[i]=0;		 
+			}
 			
 			if(m.id[i]==0){
 				m->sem_madre[i]=madre;
- 					f_criar(orden);
+ 				f_criar(orden);
+ 				m.nacidas++;
 				m.pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m.id[i]);
-			}else if(m.id[i]=-2){
-				 WaitForSingleObject(m.hilo[i], INFINITE);
-				 m.id[i]=0;
+				
+				SIGNAL(SEM_MEMORIA);
+			}else{
+				SIGNAL(SEM_MAX_PROCESOS);
+				SIGNAL(madre);
+				SIGNAL(SEM_MEMORIA);
 			}
-			SIGNAL(SEM_MAX_PROCESOS);
-			SIGNAL(SEM_MEMORIA);
 			
-			
+		}
+		//Si es la primera rana espera por todas las hijas
+		if(orden==0){
+			for(i=0;i<30;i++){
+				if(m.id[i]!=0){
+					WaitForSingleObject(m.hilo[i], INFINITE);
+				}
+			}
 		}
 		
 	}
@@ -243,9 +256,85 @@ SINGAL(SEM_HILO)
 DWORD WINAPI rana_hija( LPVOID parametro){
 	int orden= *((int *)parametro);
 	int madre=orden+3;
+	int movido=0;
+	int direccion;
+	while(m.terminar){
+		
+		Esperar_sem(m.dy[orden]);
+		if(!(m.terminar)){
+				break;
+		}
+		WAIT(SEM_MEMORIA);
+		if(((m.dx[orden])<0)||((m.dx[orden]>79)){
+			m.perdidas++;
+			SIGNAL(SEM_MEMORIA);
+			Liberar_sem(posicion+1);
+		}
+		if(!(m.terminar)){
+				break;
+		}
+		if(PUEDO_SALTAR(m.dx[orden],m.dy[orden],ARRIBA)==TRUE) direccion=ARRIBA;
+		else if(PUEDO_SALTAR(m.dx[orden],m.dy[orden],DERECHA)==TRUE) direccion=DERECHA;
+		else if(PUEDO_SALTAR(m.dx[orden],m.dy[orden],IZQUIERDA)==TRUE) direccion=IZQUIERDA;
+		else{
+			SIGNAL(SEM_MEMORIA);
+			Liberar_sem(posicion);
+			PAUSA();
+			continue;
+		}
+		AVANCE_RANA_INI(m.dx[orden],m.dy[orden]);
+		if(AVANCE_RANA(&m.dx[orden],&m.dy[orden],direccion)==FALSE){
+			m.perdidas++;
+			SIGNAL(SEM_MEMORIA);
+			Liberar_sem(orden);
+			break;
+		}
+		SIGNAL(SEM_MEMORIA);
+		PAUSA();
+		WAIT(SEM_MEMORIA);
+		if(AVANCE_RANA_FIN(m.dx[orden],m.dy[orden])){
+			PRINT_MSG("Error al finalizar el avance";)
+		}
+		movido++;
+		if(movido==1){
+			SIGNAL(madre);
+		}
+		if(m.dy[orden]==11){
+			m.salvadas++;
+			SIGNAL(SEM_MEMORIA);
+			Liberar_sem(orden);
+		}
+			if(((m.dx[orden])<0)||((m.dx[orden]>79)){
+			m.perdidas++;
+			SIGNAL(SEM_MEMORIA);
+			Liberar_sem(posicion);
+			break;
+		}
+		SIGNAL(SEM_MEMORIA);
+		Liberar_sem(orden);
+	}
+	
+	SIGNAL(SEM_MAX_PROCESOS);
+	m.pid[orden]=-2;
+	
 }
 
-
+void Esperar_sem(int posicion){
+	if(posicion==3){
+		SIGNAL(SEM_TRONCOS0);
+    }else if( posicion > 3){
+    	SIGNAL(posicion+5);
+    	SIGNAL(posicion+6);
+	} 
+}
+void Liberar_sem(int posicion){
+	if(posicion==3){
+		WAIT(SEM_TRONCOS0);
+    }else if( posicion > 3){
+    	WAIT(posicion+4);
+    	WAIT(posicion+5);
+	} 
+}
 int cargar_libreria(int* fase_ext) {
     int error = 0, fase = 0;
     const char* nombreDll;
