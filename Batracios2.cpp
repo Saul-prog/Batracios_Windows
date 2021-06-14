@@ -36,10 +36,10 @@ typedef struct {
     LONG r_salvadas;
     LONG r_perdidas;
     BOOL terminar;
-    DWORD pid[30];
+    HANDLE pid[30];
     int dx[30];
     int dy[30];
-    int id[30];
+    DWORD id[30];
     int sem_madre[30];
 } MEMORIA;
 HANDLE idSemaforo[SEM_TOTAL];
@@ -81,9 +81,9 @@ int main(int argc, char const* argv[])
     int lTroncos[] = { 4,9,6,5,3,5,4 };
     int lAguas[] = { 2,1,3,2,1,2,3 };
     int fase=0, error=0;
-   	HANDLE hilo[MAX_RANAS];
+   	HANDLE hilo[MAX_RANAS+1];
     int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
-    int i,j,k;
+    int i,j,k,n,l,o;
     char* resto0, * resto1;
     //Manejadora Ctrl+C
     BOOL manejadora=FALSE;
@@ -145,7 +145,7 @@ int main(int argc, char const* argv[])
 	  m->r_nacidas=  0;
 	  m->r_perdidas= 0;
 	  m->r_salvadas= 0;
-	  m->terminar=   True;
+	  m->terminar=   TRUE;
 	for(k=0;k<30;k++){
 	    m->pid[k]=NULL;
 	    m->dx[k]=0;
@@ -163,7 +163,7 @@ int main(int argc, char const* argv[])
 	}
 	//INICIO_RANAS( delta_t,  lTroncos[],  lAguas[], dirs[],  t_Criar,  CRIAR);
 	
-
+	hilo[MAX_RANAS+1]= CreateThread( NULL, 0, TRONCOS, &i, 0, NULL);
 	//Crear productoras
 	for(j=0;j<4;j++){
 		hilo[j]= CreateThread( NULL, 0, rana_madre, &j, 0, NULL);
@@ -176,22 +176,23 @@ int main(int argc, char const* argv[])
 	Sleep(30000);
 	m->terminar=FALSE;
 	SIGNAL(0);
-	for(o=0;o<PROCESOS_MAX;o++){
+	for(o=0;o<MAX_RANITAS;o++){
 		SIGNAL(1);
 	}
 	for ( n = 2; n < SEM_TOTAL; l++)
 	{
 	    SIGNAL(n);    
 	}
-	for (l= 0; l < 4; l++) {
+	for (l= 0; l < 4+1; l++) {
     	WaitForSingleObject( hilo[l], INFINITE);
   	}
-	COMPROBAR_ESTADISTICAS(m.nacidas,m.salvadas,m.perdidas)	;
+  	
+	COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas)	;
 	FIN_RANAS();
 	//Liberar memoria
 	free(m);
 	//Cerrar los semaforos
-	for (i= 0; i < semTOTAL; i++) {
+	for (i= 0; i < SEM_TOTAL; i++) {
     	CloseHandle( idSemaforo[i]);
   	}
 }
@@ -200,39 +201,40 @@ int main(int argc, char const* argv[])
 ////-------------------------------
 void f_criar (int pos){
 	PARTO_RANAS(pos);
-	m.dx[pos]=15+16*pos;
-	m.dx[pos]=0;
+	m->dx[pos]=15+16*pos;
+	m->dx[pos]=0;
 	
 
 }
 DWORD WINAPI rana_madre( LPVOID parametro){
 int orden= *((int *)parametro);
 int madre= orden+3;
-SINGAL(SEM_HILO)
+int i;
+SIGNAL(SEM_HILO);
 	while(m->terminar){
 		for(i=0;i<30;i++){
 			WAIT(SEM_MAX_PROCESOS);
-			if(!(m.terminar)){
+			if(!(m->terminar)){
 				break;
 			}
 			WAIT(madre);
-			if(!(m.terminar)){
+			if(!(m->terminar)){
 				break;
 			}
 			WAIT(SEM_MEMORIA);
-			if(!(m.terminar)){
+			if(!(m->terminar)){
 				break;
 			}
-			if(m.id[i]=-2){
-				 WaitForSingleObject(m.hilo[i], INFINITE);
-				 m.id[i]=0;		 
+			if(m->id[i]=-2){
+				 WaitForSingleObject(m->pid[i], INFINITE);
+				 m->id[i]=0;		 
 			}
 			
-			if(m.id[i]==0){
+			if(m->id[i]==0){
 				m->sem_madre[i]=madre;
  				f_criar(orden);
- 				m.nacidas++;
-				m.pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m.id[i]);
+ 				m->r_nacidas++;
+				m->pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m->id[i]);
 				
 				SIGNAL(SEM_MEMORIA);
 			}else{
@@ -245,8 +247,8 @@ SINGAL(SEM_HILO)
 		//Si es la primera rana espera por todas las hijas
 		if(orden==0){
 			for(i=0;i<30;i++){
-				if(m.id[i]!=0){
-					WaitForSingleObject(m.hilo[i], INFINITE);
+				if(m->id[i]!=0){
+					WaitForSingleObject(m->pid[i], INFINITE);
 				}
 			}
 		}
@@ -260,33 +262,33 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	int madre=orden+3;
 	int movido=0;
 	int direccion;
-	while(m.terminar){
+	while(m->terminar){
 		
-		Esperar_sem(m.dy[orden]);
-		if(!(m.terminar)){
+		Esperar_sem(m->dy[orden]);
+		if(!(m->terminar)){
 				break;
 		}
 		WAIT(SEM_MEMORIA);
-		if(((m.dx[orden])<0)||((m.dx[orden]>79)){
-			m.perdidas++;
+		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
+			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(posicion+1);
+			Liberar_sem(orden+1);
 		}
-		if(!(m.terminar)){
+		if(!(m->terminar)){
 				break;
 		}
-		if(PUEDO_SALTAR(m.dx[orden],m.dy[orden],ARRIBA)==TRUE) direccion=ARRIBA;
-		else if(PUEDO_SALTAR(m.dx[orden],m.dy[orden],DERECHA)==TRUE) direccion=DERECHA;
-		else if(PUEDO_SALTAR(m.dx[orden],m.dy[orden],IZQUIERDA)==TRUE) direccion=IZQUIERDA;
+		if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],ARRIBA)==TRUE) direccion=ARRIBA;
+		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],DERECHA)==TRUE) direccion=DERECHA;
+		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],IZQUIERDA)==TRUE) direccion=IZQUIERDA;
 		else{
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(posicion);
+			Liberar_sem(orden);
 			PAUSA();
 			continue;
 		}
-		AVANCE_RANA_INI(m.dx[orden],m.dy[orden]);
-		if(AVANCE_RANA(&m.dx[orden],&m.dy[orden],direccion)==FALSE){
-			m.perdidas++;
+		AVANCE_RANA_INI(m->dx[orden],m->dy[orden]);
+		if(AVANCE_RANA(&m->dx[orden],&m->dy[orden],direccion)==FALSE){
+			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
 			Liberar_sem(orden);
 			break;
@@ -294,22 +296,22 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		SIGNAL(SEM_MEMORIA);
 		PAUSA();
 		WAIT(SEM_MEMORIA);
-		if(AVANCE_RANA_FIN(m.dx[orden],m.dy[orden])){
-			PRINT_MSG("Error al finalizar el avance";)
+		if(AVANCE_RANA_FIN(m->dx[orden],m->dy[orden])){
+			PRINT_MSG("Error al finalizar el avance");
 		}
 		movido++;
 		if(movido==1){
 			SIGNAL(madre);
 		}
-		if(m.dy[orden]==11){
-			m.salvadas++;
+		if(m->dy[orden]==11){
+			m->r_salvadas++;
 			SIGNAL(SEM_MEMORIA);
 			Liberar_sem(orden);
 		}
-			if(((m.dx[orden])<0)||((m.dx[orden]>79)){
-			m.perdidas++;
+			if(((m->dx[orden])<0)||((m->dx[orden]>79))){
+			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(posicion);
+			Liberar_sem(orden);
 			break;
 		}
 		SIGNAL(SEM_MEMORIA);
@@ -317,38 +319,38 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	}
 	
 	SIGNAL(SEM_MAX_PROCESOS);
-	m.pid[orden]=-2;
+	m->id[orden]=-2;
 	
 }
 DWORD WINAPI TRONCOS( LPVOID parametro){
 	int fila;
-	while(m.terminar){
-		for(fila=0; fila<7 &&m.terminar){
+	int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
+	int i;
+	while(m->terminar){
+		for(fila=0; fila<7 && m->terminar;fila++){
 			WAIT(fila+8);
-			if(!(m.terminar)){
+			if(!(m->terminar)){
 				break;
 			}
 			WAIT(SEM_MEMORIA);
-			if(!(m.terminar)){
+			if(!(m->terminar)){
 				break;
 			}
 			if(AVANCE_TRONCOS(fila)==FALSE){
 				break;
 			}
 			for(i=0; i<30;i++){
-				if(m.dy[i]==(10-fila)){
+				if(m->dy[i]==(10-fila)){
 					if(dirs[fila]==DERECHA){
-						m.dx[i]++;
+						m->dx[i]++;
 					}else{
-						m.dx[i]--;
+						m->dx[i]--;
 					}
 				}
 			}
 			SIGNAL(fila+8);
 			SIGNAL(SEM_MEMORIA);
-			if(PAUSA()==FALSE){
-				break;
-			}
+			PAUSA();
 		}
 	}
 }
