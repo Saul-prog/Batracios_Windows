@@ -11,30 +11,36 @@
 #define MAX_RANITAS 30      //Ranitas maximas al mismo tiempo
 #define MAX_RANAS   4       //Ranas madre máximas
 //--Semaforos
-#define SEM_MAX_PROCESOS 1       //Semaforo para procesos maximos
-#define SEM_MADRE0       2       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE1       3       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE2       4       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE3       5       //Semaforo para saber si la posición de parir está libre
-#define SEM_MEMORIA      6       //Semaforo para el acceso a la memoria compartida
-#define SEM_TRONCOS0     7       //Para controlar que los troncos 
-#define SEM_TRONCOS1     8       //Para controlar que los troncos 
-#define SEM_TRONCOS2     9       //Para controlar que los troncos 
-#define SEM_TRONCOS3    10       //Para controlar que los troncos 
-#define SEM_TRONCOS4    11       //Para controlar que los troncos 
-#define SEM_TRONCOS5    12       //Para controlar que los troncos 
-#define SEM_TRONCOS6    13       //Para controlar que los troncos 
-#define SEM_TOTAL       14       //Semaforos totales
+#define SEM_HILO         0
+#define SEM_HIJAS        1
+#define SEM_MAX_PROCESOS 2       //Semaforo para procesos maximos
+#define SEM_MADRE0       3       //Semaforo para saber si la posición de parir está libre
+#define SEM_MADRE1       4       //Semaforo para saber si la posición de parir está libre
+#define SEM_MADRE2       5       //Semaforo para saber si la posición de parir está libre
+#define SEM_MADRE3       6       //Semaforo para saber si la posición de parir está libre
+#define SEM_MEMORIA      7       //Semaforo para el acceso a la memoria compartida
+#define SEM_TRONCOS0     8       //Para controlar que los troncos 
+#define SEM_TRONCOS1     9       //Para controlar que los troncos 
+#define SEM_TRONCOS2    10       //Para controlar que los troncos 
+#define SEM_TRONCOS3    11      //Para controlar que los troncos 
+#define SEM_TRONCOS4    12       //Para controlar que los troncos 
+#define SEM_TRONCOS5    13       //Para controlar que los troncos 
+#define SEM_TRONCOS6    14       //Para controlar que los troncos 
 
+#define SEM_TOTAL       15       //Semaforos totales
+#define WAIT(i)   sem_wait( i)   //Operacion WAIT
+#define SIGNAL(i) sem_signal( i) //Operacion SIGNAL
 //Globales
 typedef struct {
     int r_nacidas;
     int r_salvadas;
     int r_perdidas;
-    int terminar;
+    BOOL terminar;
     DWORD pid[30];
     int dx[30];
     int dy[30];
+    int id[30];
+    int sem_madre[30];
 } MEMORIA;
 HANDLE idSemaforo[SEM_TOTAL];
 MEMORIA * m;
@@ -46,7 +52,7 @@ TIPO_AVANCERANAFIN         AVANCE_RANA_FIN        = NULL;
 TIPO_AVANCERANAINI         AVANCE_RANA_INI        = NULL;
 TIPO_AVANCETRONCOS         AVANCE_TRONCOS         = NULL;
 TIPO_COMPROBARESTADISTICAS COMPROBAR_ESTADISTICAS = NULL;
-TIPO_CRIAR                 CRIAR                  = NULL;
+//TIPO_CRIAR                 CRIAR                  = NULL;
 TIPO_FINRANAS              FIN_RANAS              = NULL;
 TIPO_INICIORANAS           INICIO_RANAS           = NULL;
 TIPO_PARTORANAS            PARTO_RANAS            = NULL;
@@ -58,9 +64,11 @@ TIPO_PRINTMSG              PRINT_MSG              = NULL;
 BOOL WINAPI CtrlHandler(DWORD CtrlType);
 void perror(char* mensaje);
 int cargar_libreria( int *fase_ext);
-
-
-
+void f_criar(int pos);
+DWORD WINAPI rana_madre( LPVOID parametro);
+DWORD WINAPI rana_hija( LPVOID parametro);
+int sem_wait( int indice);
+int sem_signal( int indice);
 
 
 int main(int argc, char const* argv[])
@@ -71,9 +79,9 @@ int main(int argc, char const* argv[])
     int lTroncos[] = { 4,9,6,5,3,5,4 };
     int lAguas[] = { 2,1,3,2,1,2,3 };
     int fase=0, error=0;
-   
+   	HANDLE hilo[MAX_RANAS];
     int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
-    
+    int i,j,k;
     char* resto0, * resto1;
     //Manejadora Ctrl+C
     BOOL manejadora=FALSE;
@@ -118,28 +126,124 @@ int main(int argc, char const* argv[])
 
     //Se carga la libreria
     error=cargar_libreria(&fase);
-    if (error == 0) {
+    if (error != 0) {
+    	fprintf(stderr, "Error al cargar la libreria\n");
         exit(EXIT_FAILURE);
     }
-     void (*ptr)(int) = &CRIAR; 
+   	 
     //Se crea la mascara
     manejadora = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler,TRUE);
 
     if (!manejadora) {
-        perror("Fallo al crear la mascara");
+       PERROR("Fallo al crear la mascara");
     }
+    
+    //Crear e Iniciar Memoria Compartida.
+  	m= (MEMORIA *)malloc( sizeof(MEMORIA));	
+	  m->r_nacidas=  0;
+	  m->r_perdidas= 0;
+	  m->r_salvadas= 0;
+	  m->terminar=   True;
+	for(k=0;k<30;k++){
+	    m->pid[k]=NULL;
+	    m->dx[k]=0;
+	    m->dy[k]=0;
+	    m->id[k]=0;
+	    m->sem_madre[k]=0;
+	}
+	
+	//Crear e Iniciar Semaforos
+	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1  , NULL);
+	idSemaforo[SEM_HIJAS]=CreateSemaphore( NULL, 0, 1  , NULL);
+	idSemaforo[SEM_MAX_PROCESOS]=CreateSemaphore( NULL, 30, 30, NULL);
+	for(i=3;i<SEM_TOTAL;i++){
+		idSemaforo[i]=CreateSemaphore( NULL, 1, 1, NULL);		
+	}
+	//INICIO_RANAS( delta_t,  lTroncos[],  lAguas[], dirs[],  t_Criar,  CRIAR);
 
-INICIO_RANAS( delta_t,  lTroncos[],  lAguas[],  dirs[],  t_Criar,  CRIAR);
+
+	//Crear productoras
+	for(j=0;j<4;j++){
+		hilo[j]= CreateThread( NULL, 0, rana_madre, &j, 0, NULL);
+		WAIT(SEM_HILO);
+	}
 
 
 
 
-
-
+	Sleep(30000);
+	m->terminar=FALSE;
+	SIGNAL(0);
+	for(o=0;o<PROCESOS_MAX;o++){
+		SIGNAL(1);
+	}
+	for ( n = 2; n < SEM_TOTAL; l++)
+	{
+	    SIGNAL(n);    
+	}
+	for (l= 0; l < 4; l++) {
+    	WaitForSingleObject( hilo[l], INFINITE);
+  	}
+		
+	//Liberar memoria
+	free(m);
+	//Cerrar los semaforos
+	for (i= 0; i < semTOTAL; i++) {
+    	CloseHandle( idSemaforo[i]);
+  	}
 }
 
 
 
+void f_criar (int pos){
+	PARTO_RANAS(pos);
+	m.dx[pos]=15+16*pos;
+	m.dx[pos]=0;
+	
+
+}
+DWORD WINAPI rana_madre( LPVOID parametro){
+int orden= *((int *)parametro);
+int madre= orden+3;
+SINGAL(SEM_HILO)
+	while(m->terminar){
+		for(i=0;i<30;i++){
+			WAIT(SEM_MAX_PROCESOS);
+			if(!(m.terminar)){
+				break;
+			}
+			WAIT(madre);
+			if(!(m.terminar)){
+				break;
+			}
+			WAIT(SEM_MEMORIA);
+			if(!(m.terminar)){
+				break;
+			}
+			
+			
+			if(m.id[i]==0){
+				m->sem_madre[i]=madre;
+ 					f_criar(orden);
+				m.pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m.id[i]);
+			}else if(m.id[i]=-2){
+				 WaitForSingleObject(m.hilo[i], INFINITE);
+				 m.id[i]=0;
+			}
+			SIGNAL(SEM_MAX_PROCESOS);
+			SIGNAL(SEM_MEMORIA);
+			
+			
+		}
+		
+	}
+	return 0;
+}
+
+DWORD WINAPI rana_hija( LPVOID parametro){
+	int orden= *((int *)parametro);
+	int madre=orden+3;
+}
 
 
 int cargar_libreria(int* fase_ext) {
@@ -151,8 +255,9 @@ int cargar_libreria(int* fase_ext) {
     nombreDll = "ranas_v2021.dll";
     hLibreria = LoadLibrary(nombreDll);
     if (hLibreria == NULL) {
-    	perror("DLL");
-        fprintf(stderr, "Error de carga de DLL[%s].\n", nombreDll);
+    	 fprintf(stderr, "Error de carga de DLL[%d].\n",GetLastError());
+    	PERROR("DLL");
+       
         error = fase;
     }
 #if (!defined(LIBRERIA_EXPORTS) && !defined(LIBRERIA_IMPORTS))
@@ -218,18 +323,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, COMPROBAR_ESTADISTICAS);
         }
     }
-    if (!error) {
-        fase++;
-        nombreFun = "f_Criar";
-        CRIAR = (TIPO_CRIAR)GetProcAddress(hLibreria, nombreFun);
-        if (CRIAR == NULL) {
-            fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
-            error = fase;
-        }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, CRIAR);
-        }
-    }
+    
     if (!error) {
         fase++;
         nombreFun = "FinRanas";
@@ -351,14 +445,13 @@ BOOL WINAPI CtrlHandler(DWORD CtrlType)
     
 }
 
+//Funciones de manejo de semaforos
+int sem_wait( int indice)
+{	
+  return WaitForSingleObject( idSemaforo[indice], INFINITE);
+}//sem_wait
 
-
-// Ejecutar programa: Ctrl + F5 o menú Depurar > Iniciar sin depurar
-// Depurar programa: F5 o menú Depurar > Iniciar depuración
-
-// Sugerencias para primeros pasos: 1. Use la ventana del Explorador de soluciones para agregar y administrar archivos
-//   2. Use la ventana de Team Explorer para conectar con el control de código fuente
-//   3. Use la ventana de salida para ver la salida de compilación y otros mensajes
-//   4. Use la ventana Lista de errores para ver los errores
-//   5. Vaya a Proyecto > Agregar nuevo elemento para crear nuevos archivos de código, o a Proyecto > Agregar elemento existente para agregar archivos de código existentes al proyecto
-//   6. En el futuro, para volver a abrir este proyecto, vaya a Archivo > Abrir > Proyecto y seleccione el archivo .sln
+int sem_signal( int indice)
+{
+  return ReleaseSemaphore( idSemaforo[indice], 1, NULL);
+}//sem_signal
