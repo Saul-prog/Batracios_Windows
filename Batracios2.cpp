@@ -56,7 +56,7 @@ TIPO_PUEDOSALTAR           PUEDO_SALTAR           = NULL;
 TIPO_PRINTMSG              PRINT_MSG              = NULL;
 #endif
 //Prototipos
-BOOL WINAPI CtrlHandler(DWORD CtrlType);
+//BOOL WINAPI CtrlHandler(DWORD CtrlType);
 void perror(char* mensaje);
 int cargar_libreria( int *fase_ext);
 void f_Criar(int pos);
@@ -76,12 +76,12 @@ int main(int argc, char const* argv[])
     int lTroncos[] = { 4,9,6,5,3,5,4 };
     int lAguas[] = { 2,1,3,2,1,2,3 };
     int fase=0, error=0;
-   	HANDLE hilo[MAX_RANAS+1];
+   	HANDLE hilo;
     int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
-    int i,j,k,n,l,o,p;
+    int i,j,k,n,l,o,p,q,r,s;
     char* resto0, * resto1;
     //Manejadora Ctrl+C
-    BOOL manejadora=FALSE;
+    //BOOL manejadora=FALSE;
 
     if (argc < ARG_OBLG + 1)
     {
@@ -129,11 +129,11 @@ int main(int argc, char const* argv[])
     }
    	 
     //Se crea la mascara
-    manejadora = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler,TRUE);
+    //manejadora = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler,TRUE);
 
-    if (!manejadora) {
+   /* if (!manejadora) {
        PERROR("Fallo al crear la mascara");
-    }
+    }*/
     
     //Crear e Iniciar Memoria Compartida.
   	m= (MEMORIA *)malloc( sizeof(MEMORIA));	
@@ -163,46 +163,79 @@ int main(int argc, char const* argv[])
 	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1, NULL);
 	INICIO_RANAS( delta_t,  lTroncos  ,lAguas, dirs,  t_Criar,f_Criar);
 	
-	hilo[MAX_RANAS+1]= CreateThread( NULL, 0, TRONCOS, &i, 0, NULL);
+	hilo= CreateThread( NULL, 0, TRONCOS, &i, 0, NULL);
 	
 
 
 
 
-	Sleep(3000);
+	Sleep(30000);
 	m->terminar=FALSE;
-	
-	fprintf(stdout,"acabado\n");
+
+
 
 	
-	for(o=0;o<MAX_RANITAS;o++){
-		SIGNAL(SEM_MAX_PROCESOS);
 	
-	}
-	for ( n = 2; n < SEM_TOTAL; l++)
-	{
-	    SIGNAL(n);   
-		fprintf(stdout,"avisar semaforos %d\n", n); 
-	}
-	fprintf(stdout,"acabado\n");
-	
-    WaitForSingleObject( hilo[5], INFINITE);
-  	for(p=0;p<30;p++){
-		if(m->id[p]!=0){
-			WaitForSingleObject(m->pid[p], INFINITE);
+	for (i= 1; i < SEM_TOTAL; i++) {
+    	if(CloseHandle( idSemaforo[i])==0){
+    		fprintf(stdout,"Cerrar semaforo %d",i);
+    		PERROR("Cerarr sem")
 		}
+  	}
+	Sleep(1000);	
+/*	for ( r = 1; r < SEM_TOTAL; r++)
+	{
+   	fprintf(stdout,"Signal a %d vez ", r );
+				fflush(stdout);
+	        if(SIGNAL(r)==0){
+	        	PERROR("SIGNAL");
+			}
+	}*/
+	
+    
+    	if( WaitForSingleObject(hilo, INFINITE)==WAIT_FAILED){
+					 PERROR("WAITS");
+		}
+    
+    
+
+	
+  	
+	/*for (i= 0; i < 30; i++) {
+  	if(m->id[i]==-2){
+				if( WaitForSingleObject(m->pid[i], INFINITE)==WAIT_FAILED){
+					 PERROR("WAITS");
+				}
+				 m->id[i]=0;		 
+			}
+	}*/
+	fprintf(stderr,"Espera");
+	fflush(stderr);
+  	if(FIN_RANAS()==FALSE){
+		fprintf(stderr,"Error al finalizar");
+		fflush(stderr);
 	}
-  	fprintf(stdout,"acabado\n");
-	COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas)	;
-	FIN_RANAS();
+	fprintf(stderr,"Espera2");
+	fflush(stderr);
+	if(COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas)==FALSE	){
+		fprintf(stderr,"Error al comprobar estadisticas");
+		fflush(stderr);
+	}
+	
+  	
+	
+	for(q=0;q<30;q++){
+  		if(CloseHandle(m->pid[q])==0){
+  			PERROR("WAITS");
+		  }
+	}
+
 	fprintf(stdout,"acabado\n");
 	//Liberar memoria
 	free(m);
 	//Cerrar los semaforos
-	for (i= 0; i < SEM_TOTAL; i++) {
-    	CloseHandle( idSemaforo[i]);
-  	}
-  	
+	
+  	return 0;
 }
 
 
@@ -215,18 +248,23 @@ int i;
 		for(i=0;i<30;i++){
 			WAIT(SEM_MAX_PROCESOS);
 			if(!(m->terminar)){
+				SIGNAL(SEM_MAX_PROCESOS);
 				exit(1);
 			}
 	
 			WAIT(madre);
 			if(!(m->terminar)){
+				SIGNAL(SEM_MAX_PROCESOS);
+				SIGNAL(madre);
 				exit(1);
 			}
 			
 				fflush(stdout);
 			WAIT(SEM_MEMORIA);
 			if(!(m->terminar)){
-				
+				SIGNAL(SEM_MAX_PROCESOS);
+				SIGNAL(madre);
+				SIGNAL(SEM_MEMORIA);
 				exit(1);
 			}
 			
@@ -279,7 +317,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		
 		WAIT(SEM_MOVIMIENTO);
 		if(!(m->terminar)){
-			
+			SIGNAL(SEM_MOVIMIENTO);
 				break;
 		}
 		
@@ -291,6 +329,8 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 			SIGNAL(SEM_TRONCOS);
 		}
 		if(!(m->terminar)){
+			SIGNAL(SEM_MOVIMIENTO);
+			SIGNAL(SEM_MEMORIA);
 				break;
 		}
 	
@@ -351,13 +391,16 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 			WAIT(SEM_TRONCOS);
 		
 			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCOS);
 				break;
 			}
 		
 			WAIT(SEM_MEMORIA);
 				
-				fflush(stdout);
+			
 			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCOS);
+				SIGNAL(SEM_MEMORIA);
 				break;
 			}
 			if(AVANCE_TRONCOS(fila)==FALSE){
@@ -554,7 +597,7 @@ void perror(char* mensaje)
 }//perror
 
 
-BOOL WINAPI CtrlHandler(DWORD CtrlType)
+/*BOOL WINAPI CtrlHandler(DWORD CtrlType)
 {
     BOOL res = TRUE;
     switch (CtrlType) {
@@ -573,7 +616,7 @@ BOOL WINAPI CtrlHandler(DWORD CtrlType)
 
     return res;
     
-}
+}*/
 
 //Funciones de manejo de semaforos
 int sem_wait( int indice)
