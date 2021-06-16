@@ -11,23 +11,18 @@
 #define MAX_RANITAS 30      //Ranitas maximas al mismo tiempo
 #define MAX_RANAS   4       //Ranas madre máximas
 //--Semaforos
-#define SEM_HILO         0
-#define SEM_HIJAS        1
-#define SEM_MAX_PROCESOS 2       //Semaforo para procesos maximos
-#define SEM_MADRE0       3       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE1       4       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE2       5       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE3       6       //Semaforo para saber si la posición de parir está libre
-#define SEM_MEMORIA      7       //Semaforo para el acceso a la memoria compartida
-#define SEM_TRONCOS0     8       //Para controlar que los troncos 
-#define SEM_TRONCOS1     9       //Para controlar que los troncos 
-#define SEM_TRONCOS2    10       //Para controlar que los troncos 
-#define SEM_TRONCOS3    11      //Para controlar que los troncos 
-#define SEM_TRONCOS4    12       //Para controlar que los troncos 
-#define SEM_TRONCOS5    13       //Para controlar que los troncos 
-#define SEM_TRONCOS6    14       //Para controlar que los troncos 
 
-#define SEM_TOTAL       15       //Semaforos totales
+#define SEM_MAX_PROCESOS 1       //Semaforo para procesos maximos
+#define SEM_MADRE0       2       //Semaforo para saber si la posición de parir está libre
+#define SEM_MADRE1       3       //Semaforo para saber si la posición de parir está libre
+#define SEM_MADRE2       4       //Semaforo para saber si la posición de parir está libre
+#define SEM_MADRE3       5       //Semaforo para saber si la posición de parir está libre
+#define SEM_MEMORIA      6       //Semaforo para el acceso a la memoria compartida
+#define SEM_TRONCOS      7       //Para controlar que los troncos no pisen a las ranas
+#define SEM_MOVIMIENTO   8       //Para comprobar que las ranas no pisen a los troncos
+#define SEM_HILO         9
+#define SEM_TOTAL        10       //Semaforos totales
+
 #define WAIT(i)   sem_wait( i)   //Operacion WAIT
 #define SIGNAL(i) sem_signal( i) //Operacion SIGNAL
 //Globales
@@ -64,8 +59,8 @@ TIPO_PRINTMSG              PRINT_MSG              = NULL;
 BOOL WINAPI CtrlHandler(DWORD CtrlType);
 void perror(char* mensaje);
 int cargar_libreria( int *fase_ext);
-void f_criar(int pos);
-DWORD WINAPI rana_madre( LPVOID parametro);
+void f_Criar(int pos);
+
 DWORD WINAPI rana_hija( LPVOID parametro);
 DWORD WINAPI TRONCOS( LPVOID parametro);
 int sem_wait( int indice);
@@ -83,7 +78,7 @@ int main(int argc, char const* argv[])
     int fase=0, error=0;
    	HANDLE hilo[MAX_RANAS+1];
     int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
-    int i,j,k,n,l,o;
+    int i,j,k,n,l,o,p;
     char* resto0, * resto1;
     //Manejadora Ctrl+C
     BOOL manejadora=FALSE;
@@ -156,133 +151,156 @@ int main(int argc, char const* argv[])
 	
 	//Crear e Iniciar Semaforos
 	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1  , NULL);
-	idSemaforo[SEM_HIJAS]=CreateSemaphore( NULL, 0, 1  , NULL);
+	
 	idSemaforo[SEM_MAX_PROCESOS]=CreateSemaphore( NULL, 30, 30, NULL);
-	for(i=3;i<SEM_TOTAL;i++){
-		idSemaforo[i]=CreateSemaphore( NULL, 1, 1, NULL);		
-	}
-	//INICIO_RANAS( delta_t,  lTroncos[],  lAguas[], dirs[],  t_Criar,  CRIAR);
+	idSemaforo[SEM_MADRE0]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_MADRE1]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_MADRE2]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_MADRE3]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_MEMORIA]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCOS]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_MOVIMIENTO]=CreateSemaphore( NULL, 0, 1, NULL);
+	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1, NULL);
+	INICIO_RANAS( delta_t,  lTroncos  ,lAguas, dirs,  t_Criar,f_Criar);
 	
 	hilo[MAX_RANAS+1]= CreateThread( NULL, 0, TRONCOS, &i, 0, NULL);
-	//Crear productoras
-	for(j=0;j<4;j++){
-		hilo[j]= CreateThread( NULL, 0, rana_madre, &j, 0, NULL);
-		WAIT(SEM_HILO);
-	}
+	
 
 
 
 
-	Sleep(30000);
+	Sleep(3000);
 	m->terminar=FALSE;
-	SIGNAL(0);
+	
+	fprintf(stdout,"acabado\n");
+
+	
 	for(o=0;o<MAX_RANITAS;o++){
-		SIGNAL(1);
+		SIGNAL(SEM_MAX_PROCESOS);
+	
 	}
 	for ( n = 2; n < SEM_TOTAL; l++)
 	{
-	    SIGNAL(n);    
+	    SIGNAL(n);   
+		fprintf(stdout,"avisar semaforos %d\n", n); 
 	}
-	for (l= 0; l < 4+1; l++) {
-    	WaitForSingleObject( hilo[l], INFINITE);
-  	}
-  	
+	fprintf(stdout,"acabado\n");
+	
+    WaitForSingleObject( hilo[5], INFINITE);
+  	for(p=0;p<30;p++){
+		if(m->id[p]!=0){
+			WaitForSingleObject(m->pid[p], INFINITE);
+		}
+	}
+  	fprintf(stdout,"acabado\n");
 	COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas)	;
 	FIN_RANAS();
+	fprintf(stdout,"acabado\n");
 	//Liberar memoria
 	free(m);
 	//Cerrar los semaforos
 	for (i= 0; i < SEM_TOTAL; i++) {
     	CloseHandle( idSemaforo[i]);
   	}
+  	
 }
 
 
 ////-------------------------------
-void f_criar (int pos){
-	PARTO_RANAS(pos);
-	m->dx[pos]=15+16*pos;
-	m->dx[pos]=0;
-	
-
-}
-DWORD WINAPI rana_madre( LPVOID parametro){
-int orden= *((int *)parametro);
-int madre= orden+3;
+void f_Criar (int pos){
+int madre= pos+2;
 int i;
-SIGNAL(SEM_HILO);
-	while(m->terminar){
+	
+	
 		for(i=0;i<30;i++){
 			WAIT(SEM_MAX_PROCESOS);
 			if(!(m->terminar)){
-				break;
+				exit(1);
 			}
+	
 			WAIT(madre);
 			if(!(m->terminar)){
-				break;
+				exit(1);
 			}
+			
+				fflush(stdout);
 			WAIT(SEM_MEMORIA);
 			if(!(m->terminar)){
-				break;
+				
+				exit(1);
 			}
-			if(m->id[i]=-2){
+			
+				fflush(stdout);
+			if(m->id[i]==-2){
 				 WaitForSingleObject(m->pid[i], INFINITE);
 				 m->id[i]=0;		 
 			}
 			
 			if(m->id[i]==0){
 				m->sem_madre[i]=madre;
- 				f_criar(orden);
- 				m->r_nacidas++;
+ 				PARTO_RANAS(pos);
+ 				m->dx[i]=15+(16*pos);
+				m->dy[i]=0;
+ 				
+ 				//fprintf(stdout,"Se crea la rana\n");
 				m->pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m->id[i]);
+				WAIT(SEM_HILO);
 				
+			
 				SIGNAL(SEM_MEMORIA);
+				
+				
 			}else{
+				
 				SIGNAL(SEM_MAX_PROCESOS);
 				SIGNAL(madre);
 				SIGNAL(SEM_MEMORIA);
+				
 			}
 			
 		}
-		//Si es la primera rana espera por todas las hijas
-		if(orden==0){
-			for(i=0;i<30;i++){
-				if(m->id[i]!=0){
-					WaitForSingleObject(m->pid[i], INFINITE);
-				}
-			}
-		}
-		
-	}
-	return 0;
+
 }
+
 
 DWORD WINAPI rana_hija( LPVOID parametro){
 	int orden= *((int *)parametro);
-	int madre=orden+3;
+	int madre=m->sem_madre[orden];
+	/*fprintf(stdout,"Madre: %d,%d\n",m->sem_madre[orden],madre);
+	fflush(stdout);
+	fprintf(stdout,"Posicion: %d,%d\n",m->dx[orden],m->dy[orden]);
+	fflush(stdout);*/
 	int movido=0;
 	int direccion;
-	while(m->terminar){
+	BOOL NOterminar=TRUE;
+	m->r_nacidas++;
+	SIGNAL(SEM_HILO);
+	while(m->terminar /*&& NOterminar*/){
 		
-		Esperar_sem(m->dy[orden]);
+		WAIT(SEM_MOVIMIENTO);
 		if(!(m->terminar)){
+			
 				break;
 		}
+		
 		WAIT(SEM_MEMORIA);
+			
 		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(orden+1);
+			SIGNAL(SEM_TRONCOS);
 		}
 		if(!(m->terminar)){
 				break;
 		}
+	
 		if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],ARRIBA)==TRUE) direccion=ARRIBA;
 		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],DERECHA)==TRUE) direccion=DERECHA;
 		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],IZQUIERDA)==TRUE) direccion=IZQUIERDA;
 		else{
+			//fprintf(stdout,"esperando memoria saltar\n");
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(orden);
+			SIGNAL(SEM_TRONCOS);
 			PAUSA();
 			continue;
 		}
@@ -290,14 +308,15 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		if(AVANCE_RANA(&m->dx[orden],&m->dy[orden],direccion)==FALSE){
 			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(orden);
+			SIGNAL(SEM_TRONCOS);
 			break;
 		}
 		SIGNAL(SEM_MEMORIA);
 		PAUSA();
+		
 		WAIT(SEM_MEMORIA);
-		if(AVANCE_RANA_FIN(m->dx[orden],m->dy[orden])){
-			PRINT_MSG("Error al finalizar el avance");
+		if(AVANCE_RANA_FIN(m->dx[orden],m->dy[orden])==FALSE){
+			fprintf(stderr, "Error al avanzar");
 		}
 		movido++;
 		if(movido==1){
@@ -306,18 +325,19 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		if(m->dy[orden]==11){
 			m->r_salvadas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(orden);
+			SIGNAL(SEM_TRONCOS);
+			break;
 		}
 			if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(orden);
+			SIGNAL(SEM_TRONCOS);
 			break;
 		}
 		SIGNAL(SEM_MEMORIA);
-		Liberar_sem(orden);
+		SIGNAL(SEM_TRONCOS);
 	}
-	
+
 	SIGNAL(SEM_MAX_PROCESOS);
 	m->id[orden]=-2;
 	
@@ -328,11 +348,15 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 	int i;
 	while(m->terminar){
 		for(fila=0; fila<7 && m->terminar;fila++){
-			WAIT(fila+8);
+			WAIT(SEM_TRONCOS);
+		
 			if(!(m->terminar)){
 				break;
 			}
+		
 			WAIT(SEM_MEMORIA);
+				
+				fflush(stdout);
 			if(!(m->terminar)){
 				break;
 			}
@@ -348,13 +372,17 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 					}
 				}
 			}
-			SIGNAL(fila+8);
+			
 			SIGNAL(SEM_MEMORIA);
+			SIGNAL(SEM_MOVIMIENTO);
+			//	fprintf(stdout,"libero todo\n");
+			//	fflush(stdout);
 			PAUSA();
+			
 		}
 	}
 }
-void Esperar_sem(int posicion){
+/*void Esperar_sem(int posicion){
 	if(posicion==3){
 		SIGNAL(SEM_TRONCOS0);
     }else if( posicion > 3){
@@ -369,7 +397,7 @@ void Liberar_sem(int posicion){
     	WAIT(posicion+4);
     	WAIT(posicion+5);
 	} 
-}
+}*/
 int cargar_libreria(int* fase_ext) {
     int error = 0, fase = 0;
     const char* nombreDll;
@@ -395,9 +423,7 @@ int cargar_libreria(int* fase_ext) {
             
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, AVANCE_RANA);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -407,9 +433,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, AVANCE_RANA_FIN);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -419,9 +443,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, AVANCE_RANA_INI);
-        }
+       
     }
     if (!error) {
         fase++;
@@ -431,9 +453,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, AVANCE_TRONCOS);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -443,9 +463,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, COMPROBAR_ESTADISTICAS);
-        }
+        
     }
     
     if (!error) {
@@ -456,9 +474,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, FIN_RANAS);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -468,9 +484,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, INICIO_RANAS);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -480,9 +494,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, PARTO_RANAS);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -492,9 +504,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, PAUSA);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -504,9 +514,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, PUEDO_SALTAR);
-        }
+        
     }
     if (!error) {
         fase++;
@@ -516,9 +524,7 @@ int cargar_libreria(int* fase_ext) {
             fprintf(stderr, "Error de carga de funcion [%s].\n", nombreFun);
             error = fase;
         }
-        else {
-            fprintf(stderr, "Cargada la funcion [%s] en [%08X].\n", nombreFun, PRINT_MSG);
-        }
+        
     }
 #endif
 
