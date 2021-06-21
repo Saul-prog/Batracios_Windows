@@ -21,14 +21,7 @@
 #define SEM_TRONCOS      7       //Para controlar que los troncos no pisen a las ranas
 #define SEM_MOVIMIENTO   8       //Para comprobar que las ranas no pisen a los troncos
 #define SEM_HILO         9
-#define SEM_TRONCO0      10
-#define SEM_TRONCO1      11
-#define SEM_TRONCO2      12
-#define SEM_TRONCO3      13
-#define SEM_TRONCO4      14
-#define SEM_TRONCO5      15
-#define SEM_TRONCO6      16
-#define SEM_TOTAL        17       //Semaforos totales
+#define SEM_TOTAL        10       //Semaforos totales
 
 #define WAIT(i)   sem_wait( i)   //Operacion WAIT
 #define SIGNAL(i) sem_signal( i) //Operacion SIGNAL
@@ -87,6 +80,7 @@ int main(int argc, char const* argv[])
     int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
     int i,j,k,n,l,o,p,q,r,s;
     char* resto0, * resto1;
+    char texto[20]="no puedo saltar";
     //Manejadora Ctrl+C
     //BOOL manejadora=FALSE;
 
@@ -159,7 +153,7 @@ int main(int argc, char const* argv[])
 	//Crear e Iniciar Semaforos
 	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1  , NULL);
 	
-	idSemaforo[SEM_MAX_PROCESOS]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_MAX_PROCESOS]=CreateSemaphore( NULL, 30, 30, NULL);
 	idSemaforo[SEM_MADRE0]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MADRE1]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MADRE2]=CreateSemaphore( NULL, 1, 1, NULL);
@@ -168,13 +162,6 @@ int main(int argc, char const* argv[])
 	idSemaforo[SEM_TRONCOS]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MOVIMIENTO]=CreateSemaphore( NULL, 0, 1, NULL);
 	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1, NULL);
-	idSemaforo[SEM_TRONCO0]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_TRONCO1]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_TRONCO2]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_TRONCO3]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_TRONCO4]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_TRONCO5]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_TRONCO6]=CreateSemaphore( NULL, 1, 1, NULL);
 	INICIO_RANAS( delta_t,  lTroncos  ,lAguas, dirs,  t_Criar,f_Criar);
 	
 	hilo= CreateThread( NULL, 0, TRONCOS, &i, 0, NULL);
@@ -183,46 +170,53 @@ int main(int argc, char const* argv[])
 
 
 
-	Sleep(300000);
+	Sleep(30000);
+	sprintf(texto, "Mando acabar" );
+			PRINT_MSG(texto);
 	m->terminar=FALSE;
 
-
+	sprintf(texto, "Ya he mandado acabar" );
+			PRINT_MSG(texto);
 
 	
 	
 	/*for (i= 1; i < SEM_TOTAL; i++) {
     	if(CloseHandle( idSemaforo[i])==0){
     		fprintf(stdout,"Cerrar semaforo %d",i);
-    		PERROR("Cerrar sem")
+    		PERROR("Cerarr sem")
 		}
   	}*/
-	
+
+	sprintf(texto, "Ya levanto semaforos" );
+			PRINT_MSG(texto);	
 	for ( r = 1; r < SEM_TOTAL; r++)
 	{
-   
-				fflush(stdout);
+   	
 	        if(SIGNAL(r)==0){
 	        	PERROR("SIGNAL");
 			}
-	}	Sleep(1000);
+	}
 	
-    
+    sprintf(texto, "Ya espero por troncos" );
+			PRINT_MSG(texto);
     	if( WaitForSingleObject(hilo, INFINITE)==WAIT_FAILED){
 					 PERROR("WAITS");
 		}
+    
+    
 
-	
+	sprintf(texto, "Ya he esperado" );
+			PRINT_MSG(texto);	
   	
-	for (i= 0; i < 30; i++) {
-  	if(m->id[i]!=0){
+	/*for (i= 0; i < 30; i++) {
+  	if(m->id[i]==-2){
 				if( WaitForSingleObject(m->pid[i], INFINITE)==WAIT_FAILED){
 					 PERROR("WAITS");
 				}
 				 m->id[i]=0;		 
 			}
-	}
-	fprintf(stderr,"Espera");
-	fflush(stderr);
+	}*/
+	PRINT_MSG(texto);
   	if(FIN_RANAS()==FALSE){
 		fprintf(stderr,"Error al finalizar");
 		fflush(stderr);
@@ -232,24 +226,22 @@ int main(int argc, char const* argv[])
 	if(COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas)==FALSE	){
 		fprintf(stderr,"Error al comprobar estadisticas");
 		fflush(stderr);
-	}else{
-		return 0;
 	}
 	
   	
 	
-	/*for(q=0;q<30;q++){
+	for(q=0;q<30;q++){
   		if(CloseHandle(m->pid[q])==0){
   			PERROR("WAITS");
 		  }
-	}*/
+	}
 
 	fprintf(stdout,"acabado\n");
 	//Liberar memoria
 	free(m);
 	//Cerrar los semaforos
 	
-  	return 0;
+  	return 1;
 }
 
 
@@ -296,11 +288,10 @@ int i;
  				
  				//fprintf(stdout,"Se crea la rana\n");
 				m->pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m->id[i]);
-				SIGNAL(SEM_MEMORIA);
 				WAIT(SEM_HILO);
 				
 			
-				
+				SIGNAL(SEM_MEMORIA);
 				
 				
 			}else{
@@ -325,62 +316,48 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	fflush(stdout);*/
 	int movido=0;
 	int direccion;
-	int tronco_espera=0;
 	BOOL NOterminar=TRUE;
 	m->r_nacidas++;
 	SIGNAL(SEM_HILO);
-	char texto[20]="no puedo saltar";
 	while(m->terminar /*&& NOterminar*/){
 		
-		sprintf(texto, "espero sem tronco %d soy rana",tronco_espera );
-			PRINT_MSG(texto);	
-		Esperar_sem(tronco_espera);
+		WAIT(SEM_MOVIMIENTO);
 		if(!(m->terminar)){
-			Liberar_sem(tronco_espera);
-			
+			SIGNAL(SEM_MOVIMIENTO);
 				break;
 		}
-		sprintf(texto, "pido memoria soy rana");
-			PRINT_MSG(texto);
+		
 		WAIT(SEM_MEMORIA);
-		sprintf(texto, "dentro memoria en rana");
-			PRINT_MSG(texto);
-			Sleep(1000);
+			
 		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
-			Liberar_sem(tronco_espera);
 			SIGNAL(SEM_MEMORIA);
-			break;
+			SIGNAL(SEM_TRONCOS);
 		}
-		
 		if(!(m->terminar)){
-			Liberar_sem(tronco_espera);
+			SIGNAL(SEM_MOVIMIENTO);
 			SIGNAL(SEM_MEMORIA);
 				break;
 		}
-		
 	
 		if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],ARRIBA)==TRUE) direccion=ARRIBA;
 		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],DERECHA)==TRUE) direccion=DERECHA;
 		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],IZQUIERDA)==TRUE) direccion=IZQUIERDA;
 		else{
-			PRINT_MSG(texto);
+			//fprintf(stdout,"esperando memoria saltar\n");
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(tronco_espera);
+			SIGNAL(SEM_TRONCOS);
 			PAUSA();
 			continue;
 		}
-		
 		AVANCE_RANA_INI(m->dx[orden],m->dy[orden]);
 		if(AVANCE_RANA(&m->dx[orden],&m->dy[orden],direccion)==FALSE){
 			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(tronco_espera);
+			SIGNAL(SEM_TRONCOS);
 			break;
 		}
-		tronco_espera++;
 		SIGNAL(SEM_MEMORIA);
-		
 		PAUSA();
 		
 		WAIT(SEM_MEMORIA);
@@ -394,18 +371,17 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		if(m->dy[orden]==11){
 			m->r_salvadas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(tronco_espera-1);
+			SIGNAL(SEM_TRONCOS);
 			break;
 		}
-		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
+			if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			Liberar_sem(tronco_espera-1);
+			SIGNAL(SEM_TRONCOS);
 			break;
 		}
-		Liberar_sem(tronco_espera-1);
 		SIGNAL(SEM_MEMORIA);
-		
+		SIGNAL(SEM_TRONCOS);
 	}
 
 	SIGNAL(SEM_MAX_PROCESOS);
@@ -416,27 +392,20 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 	int fila;
 	int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
 	int i;
-	char texto[20]="tronco";
 	while(m->terminar){
 		for(fila=0; fila<7 && m->terminar;fila++){
-			
-			sprintf(texto, "pido sem tronco %d siendo tronco", fila+10);
-			PRINT_MSG(texto);
-			WAIT(fila+10);
-			sprintf(texto, "pido memoria");
-			PRINT_MSG(texto);
-			WAIT(SEM_MEMORIA);
+			WAIT(SEM_TRONCOS);
+		
 			if(!(m->terminar)){
-				SIGNAL(SEM_MEMORIA);
+				SIGNAL(SEM_TRONCOS);
 				break;
 			}
-			
 		
-		
-			
+			WAIT(SEM_MEMORIA);
+				
 			
 			if(!(m->terminar)){
-				SIGNAL(fila+10);
+				SIGNAL(SEM_TRONCOS);
 				SIGNAL(SEM_MEMORIA);
 				break;
 			}
@@ -453,14 +422,8 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 				}
 			}
 			
-			
-			
-			
-			sprintf(texto, "libero sem tronco %d",fila+10);
-			PRINT_MSG(texto);
-			
-			SIGNAL(fila+10);
 			SIGNAL(SEM_MEMORIA);
+			SIGNAL(SEM_MOVIMIENTO);
 			//	fprintf(stdout,"libero todo\n");
 			//	fflush(stdout);
 			PAUSA();
@@ -468,37 +431,22 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 		}
 	}
 }
+/*void Esperar_sem(int posicion){
+	if(posicion==3){
+		SIGNAL(SEM_TRONCOS0);
+    }else if( posicion > 3){
+    	SIGNAL(posicion+5);
+    	SIGNAL(posicion+6);
+	} 
+}
 void Liberar_sem(int posicion){
-	char texto[20]="libero";
-	
 	if(posicion==3){
-		sprintf(texto, "libero %d", posicion);
-		PRINT_MSG(texto);
-		SIGNAL(19-posicion);
-		
+		WAIT(SEM_TRONCOS0);
     }else if( posicion > 3){
-    	sprintf(texto, "libero %d y %d", posicion, posicion+1);
-		PRINT_MSG(texto);
-    	SIGNAL(19-posicion);
-    	SIGNAL(18-posicion);
+    	WAIT(posicion+4);
+    	WAIT(posicion+5);
 	} 
-}
-void Esperar_sem(int posicion){
-	char texto[20]="pido";
-	if(posicion==3){
-		sprintf(texto, "pido %d", posicion);
-		WAIT(19-posicion);
-    }else if( posicion > 3){
-    	sprintf(texto, "pido %d y %d", posicion, posicion+1);
-		PRINT_MSG(texto);
-    	WAIT(19-posicion);
-    	WAIT(18-posicion);
-    	sprintf(texto, "pedidos %d y %d", posicion, posicion+1);
-		PRINT_MSG(texto);
-	} 
-	PRINT_MSG(texto);
-	Sleep(2000);
-}
+}*/
 int cargar_libreria(int* fase_ext) {
     int error = 0, fase = 0;
     const char* nombreDll;
