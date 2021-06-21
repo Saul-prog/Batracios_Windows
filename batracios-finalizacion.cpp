@@ -23,8 +23,8 @@
 #define SEM_HILO         9
 #define SEM_TOTAL        10       //Semaforos totales
 
-#define WAIT(i)   sem_wait( i)   //Operacion WAIT
-#define SIGNAL(i) sem_signal( i) //Operacion SIGNAL
+#define WAIT(i)   sem_wait(i)   //Operacion WAIT
+#define SIGNAL(i) sem_signal(i) //Operacion SIGNAL
 //Globales
 typedef struct {
     LONG r_nacidas;
@@ -171,12 +171,10 @@ int main(int argc, char const* argv[])
 
 
 	Sleep(30000);
-	sprintf(texto, "Mando acabar" );
-			PRINT_MSG(texto);
+	
 	m->terminar=FALSE;
+Sleep(1000);
 
-	sprintf(texto, "Ya he mandado acabar" );
-			PRINT_MSG(texto);
 
 	
 	
@@ -197,32 +195,29 @@ int main(int argc, char const* argv[])
 			}
 	}
 	
-    sprintf(texto, "Ya espero por troncos" );
+    Sleep(1000);
 			PRINT_MSG(texto);
     	if( WaitForSingleObject(hilo, INFINITE)==WAIT_FAILED){
-					 PERROR("WAITS");
+					 PERROR("ranas pequeñas");
 		}
     
     
 
-	sprintf(texto, "Ya he esperado" );
-			PRINT_MSG(texto);	
+
   	
-	/*for (i= 0; i < 30; i++) {
+	for (i= 0; i < 30; i++) {
   	if(m->id[i]==-2){
 				if( WaitForSingleObject(m->pid[i], INFINITE)==WAIT_FAILED){
-					 PERROR("WAITS");
+					 PERROR("WAITS ranas pequeñas");
 				}
 				 m->id[i]=0;		 
 			}
-	}*/
-	PRINT_MSG(texto);
+	}
   	if(FIN_RANAS()==FALSE){
 		fprintf(stderr,"Error al finalizar");
 		fflush(stderr);
 	}
-	fprintf(stderr,"Espera2");
-	fflush(stderr);
+	
 	if(COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas)==FALSE	){
 		fprintf(stderr,"Error al comprobar estadisticas");
 		fflush(stderr);
@@ -236,12 +231,12 @@ int main(int argc, char const* argv[])
 		  }
 	}
 
-	fprintf(stdout,"acabado\n");
+	
 	//Liberar memoria
 	free(m);
 	//Cerrar los semaforos
 	
-  	return 1;
+  	return 0;
 }
 
 
@@ -249,17 +244,19 @@ int main(int argc, char const* argv[])
 void f_Criar (int pos){
 int madre= pos+2;
 int i;
-	
+
 	
 		for(i=0;i<30;i++){
 			WAIT(SEM_MAX_PROCESOS);
 			if(!(m->terminar)){
+			
 				SIGNAL(SEM_MAX_PROCESOS);
 				exit(1);
 			}
 	
 			WAIT(madre);
 			if(!(m->terminar)){
+			
 				SIGNAL(SEM_MAX_PROCESOS);
 				SIGNAL(madre);
 				exit(1);
@@ -268,6 +265,7 @@ int i;
 				fflush(stdout);
 			WAIT(SEM_MEMORIA);
 			if(!(m->terminar)){
+			
 				SIGNAL(SEM_MAX_PROCESOS);
 				SIGNAL(madre);
 				SIGNAL(SEM_MEMORIA);
@@ -316,6 +314,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	fflush(stdout);*/
 	int movido=0;
 	int direccion;
+	
 	BOOL NOterminar=TRUE;
 	m->r_nacidas++;
 	SIGNAL(SEM_HILO);
@@ -323,6 +322,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		
 		WAIT(SEM_MOVIMIENTO);
 		if(!(m->terminar)){
+			
 			SIGNAL(SEM_MOVIMIENTO);
 				break;
 		}
@@ -331,10 +331,13 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 			
 		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
+			
 			SIGNAL(SEM_MEMORIA);
 			SIGNAL(SEM_TRONCOS);
+			break;
 		}
 		if(!(m->terminar)){
+			
 			SIGNAL(SEM_MOVIMIENTO);
 			SIGNAL(SEM_MEMORIA);
 				break;
@@ -392,12 +395,14 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 	int fila;
 	int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
 	int i;
+	 char texto[20]="no puedo saltar";
 	while(m->terminar){
 		for(fila=0; fila<7 && m->terminar;fila++){
 			WAIT(SEM_TRONCOS);
 		
 			if(!(m->terminar)){
-				SIGNAL(SEM_TRONCOS);
+				
+				SIGNAL(SEM_MOVIMIENTO);
 				break;
 			}
 		
@@ -405,7 +410,8 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 				
 			
 			if(!(m->terminar)){
-				SIGNAL(SEM_TRONCOS);
+				
+				SIGNAL(SEM_MOVIMIENTO);
 				SIGNAL(SEM_MEMORIA);
 				break;
 			}
