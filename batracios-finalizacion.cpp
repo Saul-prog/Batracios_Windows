@@ -1,5 +1,13 @@
-// Batracios2.cpp : Este archivo contiene la funciÃ³n "main". La ejecuciÃ³n del programa comienza y termina ahÃ­.
-//
+/**
+ * 2020/2021
+ * Segunda práctica Windows
+ * Batracios
+ * G09
+ * Celia Torres Montero
+ * Saúl Otero García
+ * 
+ * 21/06/2021
+*/
 #include <Windows.h>
 #include "ranas.h"
 
@@ -47,7 +55,6 @@ TIPO_AVANCERANAFIN         AVANCE_RANA_FIN        = NULL;
 TIPO_AVANCERANAINI         AVANCE_RANA_INI        = NULL;
 TIPO_AVANCETRONCOS         AVANCE_TRONCOS         = NULL;
 TIPO_COMPROBARESTADISTICAS COMPROBAR_ESTADISTICAS = NULL;
-//TIPO_CRIAR                 CRIAR                  = NULL;
 TIPO_FINRANAS              FIN_RANAS              = NULL;
 TIPO_INICIORANAS           INICIO_RANAS           = NULL;
 TIPO_PARTORANAS            PARTO_RANAS            = NULL;
@@ -56,7 +63,7 @@ TIPO_PUEDOSALTAR           PUEDO_SALTAR           = NULL;
 TIPO_PRINTMSG              PRINT_MSG              = NULL;
 #endif
 //Prototipos
-//BOOL WINAPI CtrlHandler(DWORD CtrlType);
+
 void perror(char* mensaje);
 int cargar_libreria( int *fase_ext);
 void f_Criar(int pos);
@@ -78,11 +85,10 @@ int main(int argc, char const* argv[])
     int fase=0, error=0;
    	HANDLE hilo;
     int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
-    int i,j,k,n,l,o,p,q,r,s;
+    int i,k,q,r;
     char* resto0, * resto1;
     char texto[20]="no puedo saltar";
-    //Manejadora Ctrl+C
-    //BOOL manejadora=FALSE;
+    
 
     if (argc < ARG_OBLG + 1)
     {
@@ -129,12 +135,7 @@ int main(int argc, char const* argv[])
         exit(EXIT_FAILURE);
     }
    	 
-    //Se crea la mascara
-    //manejadora = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler,TRUE);
-
-   /* if (!manejadora) {
-       PERROR("Fallo al crear la mascara");
-    }*/
+   
     
     //Crear e Iniciar Memoria Compartida.
   	m= (MEMORIA *)malloc( sizeof(MEMORIA));	
@@ -151,8 +152,7 @@ int main(int argc, char const* argv[])
 	}
 	
 	//Crear e Iniciar Semaforos
-	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1  , NULL);
-	
+	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1  , NULL);	
 	idSemaforo[SEM_MAX_PROCESOS]=CreateSemaphore( NULL, 30, 30, NULL);
 	idSemaforo[SEM_MADRE0]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MADRE1]=CreateSemaphore( NULL, 1, 1, NULL);
@@ -162,8 +162,11 @@ int main(int argc, char const* argv[])
 	idSemaforo[SEM_TRONCOS]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MOVIMIENTO]=CreateSemaphore( NULL, 0, 1, NULL);
 	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1, NULL);
+	
+	//Se crean las ranas madre
 	INICIO_RANAS( delta_t,  lTroncos  ,lAguas, dirs,  t_Criar,f_Criar);
 	
+	//Se crea el hilo de troncos
 	hilo= CreateThread( NULL, 0, TRONCOS, &i, 0, NULL);
 	
 
@@ -171,40 +174,30 @@ int main(int argc, char const* argv[])
 
 
 	Sleep(30000);
-	
+	//Se manda terminar
 	m->terminar=FALSE;
-Sleep(1000);
+
 
 
 	
 	
-	/*for (i= 1; i < SEM_TOTAL; i++) {
-    	if(CloseHandle( idSemaforo[i])==0){
-    		fprintf(stdout,"Cerrar semaforo %d",i);
-    		PERROR("Cerarr sem")
-		}
-  	}*/
 
-	sprintf(texto, "Ya levanto semaforos" );
-			PRINT_MSG(texto);	
+	//se levantan todos los semaforos	
 	for ( r = 1; r < SEM_TOTAL; r++)
 	{
-   	
-	        if(SIGNAL(r)==0){
-	        	PERROR("SIGNAL");
-			}
+   		(SIGNAL(r)==0);
 	}
 	
-    Sleep(1000);
-			PRINT_MSG(texto);
-    	if( WaitForSingleObject(hilo, INFINITE)==WAIT_FAILED){
-					 PERROR("ranas pequeñas");
-		}
+
+	//Se espera por el hilo de troncos
+	if( WaitForSingleObject(hilo, INFINITE)==WAIT_FAILED){
+				 PERROR("ranas pequeñas");
+	}
     
     
+		
 
-
-  	
+  	//Se espera por los subprocesos
 	for (i= 0; i < 30; i++) {
   	if(m->id[i]==-2){
 				if( WaitForSingleObject(m->pid[i], INFINITE)==WAIT_FAILED){
@@ -213,15 +206,11 @@ Sleep(1000);
 				 m->id[i]=0;		 
 			}
 	}
-  	if(FIN_RANAS()==FALSE){
-		fprintf(stderr,"Error al finalizar");
-		fflush(stderr);
-	}
 	
-	if(COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas)==FALSE	){
-		fprintf(stderr,"Error al comprobar estadisticas");
-		fflush(stderr);
-	}
+  	FIN_RANAS();
+	
+	
+	COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas);
 	
   	
 	
@@ -230,7 +219,7 @@ Sleep(1000);
   			PERROR("WAITS");
 		  }
 	}
-
+	
 	
 	//Liberar memoria
 	free(m);
@@ -251,7 +240,7 @@ int i;
 			if(!(m->terminar)){
 			
 				SIGNAL(SEM_MAX_PROCESOS);
-				exit(1);
+				break;
 			}
 	
 			WAIT(madre);
@@ -259,7 +248,7 @@ int i;
 			
 				SIGNAL(SEM_MAX_PROCESOS);
 				SIGNAL(madre);
-				exit(1);
+				break;
 			}
 			
 				fflush(stdout);
@@ -269,7 +258,7 @@ int i;
 				SIGNAL(SEM_MAX_PROCESOS);
 				SIGNAL(madre);
 				SIGNAL(SEM_MEMORIA);
-				exit(1);
+				break;
 			}
 			
 				fflush(stdout);
@@ -286,10 +275,12 @@ int i;
  				
  				//fprintf(stdout,"Se crea la rana\n");
 				m->pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m->id[i]);
-				WAIT(SEM_HILO);
+				m->r_nacidas++;
 				
-			
+				WAIT(SEM_HILO);
 				SIGNAL(SEM_MEMORIA);
+			
+				
 				
 				
 			}else{
@@ -308,15 +299,11 @@ int i;
 DWORD WINAPI rana_hija( LPVOID parametro){
 	int orden= *((int *)parametro);
 	int madre=m->sem_madre[orden];
-	/*fprintf(stdout,"Madre: %d,%d\n",m->sem_madre[orden],madre);
-	fflush(stdout);
-	fprintf(stdout,"Posicion: %d,%d\n",m->dx[orden],m->dy[orden]);
-	fflush(stdout);*/
 	int movido=0;
 	int direccion;
 	
 	BOOL NOterminar=TRUE;
-	m->r_nacidas++;
+	
 	SIGNAL(SEM_HILO);
 	while(m->terminar /*&& NOterminar*/){
 		
@@ -347,12 +334,13 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],DERECHA)==TRUE) direccion=DERECHA;
 		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],IZQUIERDA)==TRUE) direccion=IZQUIERDA;
 		else{
-			//fprintf(stdout,"esperando memoria saltar\n");
+			
 			SIGNAL(SEM_MEMORIA);
 			SIGNAL(SEM_TRONCOS);
 			PAUSA();
 			continue;
 		}
+		
 		AVANCE_RANA_INI(m->dx[orden],m->dy[orden]);
 		if(AVANCE_RANA(&m->dx[orden],&m->dy[orden],direccion)==FALSE){
 			m->r_perdidas++;
@@ -364,6 +352,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		PAUSA();
 		
 		WAIT(SEM_MEMORIA);
+		
 		if(AVANCE_RANA_FIN(m->dx[orden],m->dy[orden])==FALSE){
 			fprintf(stderr, "Error al avanzar");
 		}
@@ -385,6 +374,10 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		}
 		SIGNAL(SEM_MEMORIA);
 		SIGNAL(SEM_TRONCOS);
+		if(!(m->terminar)){
+		
+				break;
+		}
 	}
 
 	SIGNAL(SEM_MAX_PROCESOS);
@@ -608,27 +601,6 @@ void perror(char* mensaje)
     LocalFree(lpMsgBuf);
 }//perror
 
-
-/*BOOL WINAPI CtrlHandler(DWORD CtrlType)
-{
-    BOOL res = TRUE;
-    switch (CtrlType) {
-
-        // Handle the CTRL-C signal.
-    case CTRL_C_EVENT:
-        printf("Ctrl-C event\n\n");
-        Beep(750, 300);
-        res = TRUE;
-        break;
-
-    default:
-        res = TRUE;
-        break;
-    }
-
-    return res;
-    
-}*/
 
 //Funciones de manejo de semaforos
 int sem_wait( int indice)
