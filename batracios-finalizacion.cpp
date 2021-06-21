@@ -199,7 +199,7 @@ int main(int argc, char const* argv[])
 
   	//Se espera por los subprocesos
 	for (i= 0; i < 30; i++) {
-  	if(m->id[i]==-2){
+  		if(m->id[i]!=0){
 				if( WaitForSingleObject(m->pid[i], INFINITE)==WAIT_FAILED){
 					 PERROR("WAITS ranas pequeñas");
 				}
