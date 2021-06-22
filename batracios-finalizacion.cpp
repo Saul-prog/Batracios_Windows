@@ -85,9 +85,8 @@ int main(int argc, char const* argv[])
     int fase=0, error=0;
    	HANDLE hilo;
     int dirs[] = { IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA,DERECHA,IZQUIERDA };
-    int i,k,q,r;
+    int i,k,q,r,j;
     char* resto0, * resto1;
-    char texto[20]="no puedo saltar";
     
 
     if (argc < ARG_OBLG + 1)
@@ -169,41 +168,29 @@ int main(int argc, char const* argv[])
 	//Se crea el hilo de troncos
 	hilo= CreateThread( NULL, 0, TRONCOS, &i, 0, NULL);
 	
-
-
-
-
 	Sleep(30000);
 	//Se manda terminar
 	m->terminar=FALSE;
 
-
-
-	
-	
-
 	//se levantan todos los semaforos	
 	for ( r = 1; r < SEM_TOTAL; r++)
 	{
-   		(SIGNAL(r)==0);
+   		SIGNAL(r);
 	}
-	
 
 	//Se espera por el hilo de troncos
 	if( WaitForSingleObject(hilo, INFINITE)==WAIT_FAILED){
-				 PERROR("ranas pequeñas");
+		PERROR("ranas pequeñas");
 	}
-    
-    
-		
 
-  	//Se espera por los subprocesos
+ 	//Se espera por los subprocesos
 	for (i= 0; i < 30; i++) {
   		if(m->id[i]!=0){
 				if( WaitForSingleObject(m->pid[i], INFINITE)==WAIT_FAILED){
-					 PERROR("WAITS ranas pequeñas");
+					PERROR("WAITS ranas pequeñas");
 				}
-				 m->id[i]=0;		 
+				
+				m->id[i]=0;		 
 			}
 	}
 	
@@ -212,18 +199,19 @@ int main(int argc, char const* argv[])
 	
 	COMPROBAR_ESTADISTICAS(m->r_nacidas,m->r_salvadas,m->r_perdidas);
 	
-  	
-	
 	for(q=0;q<30;q++){
   		if(CloseHandle(m->pid[q])==0){
   			PERROR("WAITS");
 		  }
 	}
-	
-	
+		
 	//Liberar memoria
 	free(m);
 	//Cerrar los semaforos
+	for(j=1; j<SEM_TOTAL; j++)
+	{
+		CloseHandle(idSemaforo[j]);
+	}
 	
   	return 0;
 }
