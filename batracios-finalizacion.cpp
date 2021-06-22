@@ -17,14 +17,14 @@
 //Definiciones
 #define ARG_OBLG    1       //Argumentos obligatorios minimos
 #define MAX_RANITAS 30      //Ranitas maximas al mismo tiempo
-#define MAX_RANAS   4       //Ranas madre máximas
+#define MAX_RANAS   4       //Ranas madre maximas
 //--Semaforos
 
 #define SEM_MAX_PROCESOS 1       //Semaforo para procesos maximos
-#define SEM_MADRE0       2       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE1       3       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE2       4       //Semaforo para saber si la posición de parir está libre
-#define SEM_MADRE3       5       //Semaforo para saber si la posición de parir está libre
+#define SEM_MADRE0       2       //Semaforo para saber si la posicion de parir esta libre
+#define SEM_MADRE1       3       //Semaforo para saber si la posicion de parir esta libre
+#define SEM_MADRE2       4       //Semaforo para saber si la posicion de parir esta libre
+#define SEM_MADRE3       5       //Semaforo para saber si la posicion de parir esta libre
 #define SEM_MEMORIA      6       //Semaforo para el acceso a la memoria compartida
 #define SEM_TRONCOS      7       //Para controlar que los troncos no pisen a las ranas
 #define SEM_MOVIMIENTO   8       //Para comprobar que las ranas no pisen a los troncos
@@ -62,8 +62,8 @@ TIPO_PAUSA                 PAUSA                  = NULL;
 TIPO_PUEDOSALTAR           PUEDO_SALTAR           = NULL;
 TIPO_PRINTMSG              PRINT_MSG              = NULL;
 #endif
-//Prototipos
 
+//Prototipos
 void perror(char* mensaje);
 int cargar_libreria( int *fase_ext);
 void f_Criar(int pos);
@@ -273,7 +273,6 @@ int i;
  				m->dx[i]=15+(16*pos);
 				m->dy[i]=0;
  				
- 				//fprintf(stdout,"Se crea la rana\n");
 				m->pid[i]= CreateThread( NULL, 0, rana_hija, &i, 0, &m->id[i]);
 				m->r_nacidas++;
 				
@@ -305,7 +304,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	BOOL NOterminar=TRUE;
 	
 	SIGNAL(SEM_HILO);
-	while(m->terminar /*&& NOterminar*/){
+	while(m->terminar){
 		
 		WAIT(SEM_MOVIMIENTO);
 		if(!(m->terminar)){
@@ -423,29 +422,13 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 			
 			SIGNAL(SEM_MEMORIA);
 			SIGNAL(SEM_MOVIMIENTO);
-			//	fprintf(stdout,"libero todo\n");
-			//	fflush(stdout);
+
 			PAUSA();
 			
 		}
 	}
 }
-/*void Esperar_sem(int posicion){
-	if(posicion==3){
-		SIGNAL(SEM_TRONCOS0);
-    }else if( posicion > 3){
-    	SIGNAL(posicion+5);
-    	SIGNAL(posicion+6);
-	} 
-}
-void Liberar_sem(int posicion){
-	if(posicion==3){
-		WAIT(SEM_TRONCOS0);
-    }else if( posicion > 3){
-    	WAIT(posicion+4);
-    	WAIT(posicion+5);
-	} 
-}*/
+
 int cargar_libreria(int* fase_ext) {
     int error = 0, fase = 0;
     const char* nombreDll;
