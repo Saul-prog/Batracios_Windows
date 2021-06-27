@@ -36,7 +36,7 @@
 #define SEM_TRONCO4      14
 #define SEM_TRONCO5      15
 #define SEM_TRONCO6      16
-#define SEM_TOTAL        10       //Semaforos totales
+#define SEM_TOTAL        17       //Semaforos totales
 
 #define WAIT(i)   sem_wait(i)   //Operacion WAIT
 #define SIGNAL(i) sem_signal(i) //Operacion SIGNAL
@@ -74,13 +74,12 @@ TIPO_PRINTMSG              PRINT_MSG              = NULL;
 void perror(char* mensaje);
 int cargar_libreria( int *fase_ext);
 void f_Criar(int pos);
-
+void liberar(int pos);
 DWORD WINAPI rana_hija( LPVOID parametro);
 DWORD WINAPI TRONCOS( LPVOID parametro);
 int sem_wait( int indice);
 int sem_signal( int indice);
-void Esperar_sem(int posicion);
-void Liberar_sem(int posicion);
+
 
 int main(int argc, char const* argv[])
 {
@@ -301,26 +300,45 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	SIGNAL(SEM_HILO);
 	while(m->terminar){
 		
-		WAIT(SEM_MOVIMIENTO);
-		if(!(m->terminar)){
-			
-			SIGNAL(SEM_MOVIMIENTO);
+		if(m->dy[orden]==3){
+			WAIT(SEM_TRONCO0);
+			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCO0);
 				break;
+			}
 		}
-		
-		WAIT(SEM_MEMORIA);
+		if(m->dy[orden]>3 && m->dy[orden]<10){
+			WAIT(m->dy[orden]+6);
+			if(!(m->terminar)){
+				SIGNAL(m->dy[orden]+6);
+				break;
+			}
+			WAIT(m->dy[orden]+7);
+			if(!(m->terminar)){
+				SIGNAL(m->dy[orden]+7);
+				break;
+			}
+		}
+		if(m->dy[orden]==10){
+			WAIT(SEM_TRONCO6);
+			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCO6);
+				break;
+			}
+		}
+				
+		//WAIT(SEM_MEMORIA);
 			
 		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			
-			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			//SIGNAL(SEM_MEMORIA);
+			liberar(m->dy[orden]);
 			break;
 		}
 		if(!(m->terminar)){
-			
-			SIGNAL(SEM_MOVIMIENTO);
-			SIGNAL(SEM_MEMORIA);
+			//SIGNAL(SEM_MEMORIA);
+			liberar(m->dy[orden]);
 				break;
 		}
 	
@@ -329,8 +347,8 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		else if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],IZQUIERDA)==TRUE) direccion=IZQUIERDA;
 		else{
 			
-			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			//SIGNAL(SEM_MEMORIA);
+			liberar(m->dy[orden]);
 			PAUSA();
 			continue;
 		}
@@ -338,15 +356,54 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		AVANCE_RANA_INI(m->dx[orden],m->dy[orden]);
 		if(AVANCE_RANA(&m->dx[orden],&m->dy[orden],direccion)==FALSE){
 			m->r_perdidas++;
-			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			//SIGNAL(SEM_MEMORIA);
+			liberar(m->dy[orden]);
 			break;
 		}
-		SIGNAL(SEM_MEMORIA);
+		
+		//SIGNAL(SEM_MEMORIA);
+		liberar(m->dy[orden]-1);
 		PAUSA();
 		
-		WAIT(SEM_MEMORIA);
-		
+			if(m->dy[orden]==3){
+			WAIT(SEM_TRONCO0);
+			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCO0);
+				break;
+			}
+		}
+		if(m->dy[orden]>3 && m->dy[orden]<10){
+			WAIT(m->dy[orden]+6);
+			if(!(m->terminar)){
+				SIGNAL(m->dy[orden]+6);
+				break;
+			}
+			WAIT(m->dy[orden]+7);
+			if(!(m->terminar)){
+				SIGNAL(m->dy[orden]+7);
+				break;
+			}
+		}
+		if(m->dy[orden]==10){
+			WAIT(SEM_TRONCO6);
+			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCO6);
+				break;
+			}
+		}
+		//WAIT(SEM_MEMORIA);
+		if(m->dy[orden]==11){
+			m->r_salvadas++;
+			AVANCE_RANA_FIN(m->dx[orden],m->dy[orden]);
+			//SIGNAL(SEM_MEMORIA);
+			liberar(m->dy[orden]);
+			break;
+		}if(((m->dx[orden])<0)||((m->dx[orden]>79))){
+			m->r_perdidas++;
+			//SIGNAL(SEM_MEMORIA);
+			liberar(m->dy[orden]);
+			break;
+		}
 		if(AVANCE_RANA_FIN(m->dx[orden],m->dy[orden])==FALSE){
 			fprintf(stderr, "Error al avanzar");
 		}
@@ -356,19 +413,18 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		}
 		if(m->dy[orden]==11){
 			m->r_salvadas++;
-			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			liberar(m->dy[orden]);
+			//SIGNAL(SEM_MEMORIA);
 			break;
 		}
-			if(((m->dx[orden])<0)||((m->dx[orden]>79))){
+		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
-			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			liberar(m->dy[orden]);
+			//SIGNAL(SEM_MEMORIA);
 			break;
 		}
-		SIGNAL(SEM_MEMORIA);
-		SIGNAL(SEM_TRONCOS);
-		
+		liberar(m->dy[orden]);
+		//SIGNAL(SEM_MEMORIA);
 	}
 
 	SIGNAL(SEM_MAX_PROCESOS);
@@ -382,21 +438,21 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 	 char texto[20]="no puedo saltar";
 	while(m->terminar){
 		for(fila=0; fila<7 && m->terminar;fila++){
-			WAIT(SEM_TRONCOS);
+			WAIT(fila+10);
 		
 			if(!(m->terminar)){
 				
-				SIGNAL(SEM_MOVIMIENTO);
+				SIGNAL(fila+10);
 				break;
 			}
 		
-			WAIT(SEM_MEMORIA);
+			//WAIT(SEM_MEMORIA);
 				
 			
 			if(!(m->terminar)){
 				
-				SIGNAL(SEM_MOVIMIENTO);
-				SIGNAL(SEM_MEMORIA);
+				SIGNAL(fila+10);
+				//SIGNAL(SEM_MEMORIA);
 				break;
 			}
 			if(AVANCE_TRONCOS(fila)==FALSE){
@@ -412,14 +468,27 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 				}
 			}
 			
-			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_MOVIMIENTO);
+			//SIGNAL(SEM_MEMORIA);
+			SIGNAL(fila+10);
 
 			PAUSA();
 			
 		}
 	}
 }
+void liberar(int pos){
+	if(pos==3){
+		SIGNAL(SEM_TRONCO0);
+	}
+	if(pos>3 && pos<10){
+		SIGNAL(pos+6);
+		SIGNAL(pos+7);
+	}
+	if(pos==10){
+		SIGNAL(SEM_TRONCO6);
+	}
+}
+
 
 int cargar_libreria(int* fase_ext) {
     int error = 0, fase = 0;

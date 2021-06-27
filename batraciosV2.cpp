@@ -20,23 +20,14 @@
 #define MAX_RANAS   4       //Ranas madre maximas
 //--Semaforos
 
-#define SEM_MAX_PROCESOS 1       //Semaforo para procesos maximos
-#define SEM_MADRE0       2       //Semaforo para saber si la posicion de parir esta libre
-#define SEM_MADRE1       3       //Semaforo para saber si la posicion de parir esta libre
-#define SEM_MADRE2       4       //Semaforo para saber si la posicion de parir esta libre
-#define SEM_MADRE3       5       //Semaforo para saber si la posicion de parir esta libre
-#define SEM_MEMORIA      6       //Semaforo para el acceso a la memoria compartida
-#define SEM_TRONCOS      7       //Para controlar que los troncos no pisen a las ranas
-#define SEM_MOVIMIENTO   8       //Para comprobar que las ranas no pisen a los troncos
-#define SEM_HILO         9
-#define SEM_TRONCO0      10
-#define SEM_TRONCO1      11
-#define SEM_TRONCO2      12
-#define SEM_TRONCO3      13
-#define SEM_TRONCO4      14
-#define SEM_TRONCO5      15
-#define SEM_TRONCO6      16
-#define SEM_TOTAL        10       //Semaforos totales
+#define SEM_MAX_PROCESOS 0       //Semaforo para procesos maximos
+#define SEM_MADRE0       1       //Semaforo para saber si la posicion de parir esta libre
+#define SEM_MADRE1       2       //Semaforo para saber si la posicion de parir esta libre
+#define SEM_MADRE2       3      //Semaforo para saber si la posicion de parir esta libre
+#define SEM_MADRE3       4       //Semaforo para saber si la posicion de parir esta libre
+#define SEM_MEMORIA      5       //Semaforo para el acceso a la memoria compartida
+#define SEM_HILO         6
+#define SEM_TOTAL        7       //Semaforos totales
 
 #define WAIT(i)   sem_wait(i)   //Operacion WAIT
 #define SIGNAL(i) sem_signal(i) //Operacion SIGNAL
@@ -74,13 +65,11 @@ TIPO_PRINTMSG              PRINT_MSG              = NULL;
 void perror(char* mensaje);
 int cargar_libreria( int *fase_ext);
 void f_Criar(int pos);
-
 DWORD WINAPI rana_hija( LPVOID parametro);
 DWORD WINAPI TRONCOS( LPVOID parametro);
 int sem_wait( int indice);
 int sem_signal( int indice);
-void Esperar_sem(int posicion);
-void Liberar_sem(int posicion);
+
 
 int main(int argc, char const* argv[])
 {
@@ -158,15 +147,12 @@ int main(int argc, char const* argv[])
 	}
 	
 	//Crear e Iniciar Semaforos
-	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1  , NULL);	
 	idSemaforo[SEM_MAX_PROCESOS]=CreateSemaphore( NULL, 30, 30, NULL);
 	idSemaforo[SEM_MADRE0]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MADRE1]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MADRE2]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MADRE3]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MEMORIA]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_TRONCOS]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_MOVIMIENTO]=CreateSemaphore( NULL, 0, 1, NULL);
 	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1, NULL);
 	
 	//Se crean las ranas madre
@@ -226,7 +212,7 @@ int main(int argc, char const* argv[])
 
 ////-------------------------------
 void f_Criar (int pos){
-int madre= pos+2;
+int madre= pos+1;
 int i;
 
 	
@@ -301,26 +287,45 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	SIGNAL(SEM_HILO);
 	while(m->terminar){
 		
-		WAIT(SEM_MOVIMIENTO);
-		if(!(m->terminar)){
-			
-			SIGNAL(SEM_MOVIMIENTO);
+		/*if(m->dy[orden]==3){
+			WAIT(SEM_TRONCO0);
+			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCO0);
 				break;
+			}
 		}
-		
+		if(m->dy[orden]>3 && m->dy[orden]<10){
+			WAIT(m->dy[orden]+6);
+			if(!(m->terminar)){
+				SIGNAL(m->dy[orden]+6);
+				break;
+			}
+			WAIT(m->dy[orden]+7);
+			if(!(m->terminar)){
+				SIGNAL(m->dy[orden]+7);
+				break;
+			}
+		}
+		if(m->dy[orden]==10){
+			WAIT(SEM_TRONCO6);
+			if(!(m->terminar)){
+				SIGNAL(SEM_TRONCO6);
+				break;
+			}
+		}*/
+				
 		WAIT(SEM_MEMORIA);
 			
 		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			
 			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			//liberar(m->dy[orden]);
 			break;
 		}
 		if(!(m->terminar)){
-			
-			SIGNAL(SEM_MOVIMIENTO);
 			SIGNAL(SEM_MEMORIA);
+			//liberar(m->dy[orden]);
 				break;
 		}
 	
@@ -330,7 +335,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		else{
 			
 			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			//liberar(m->dy[orden]);
 			PAUSA();
 			continue;
 		}
@@ -339,14 +344,26 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		if(AVANCE_RANA(&m->dx[orden],&m->dy[orden],direccion)==FALSE){
 			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
+			//liberar(m->dy[orden]);
 			break;
 		}
+		
 		SIGNAL(SEM_MEMORIA);
+		//liberar(m->dy[orden]-1);
 		PAUSA();
 		
-		WAIT(SEM_MEMORIA);
 		
+		WAIT(SEM_MEMORIA);
+		if(m->dy[orden]==11){
+			m->r_salvadas++;
+			AVANCE_RANA_FIN(m->dx[orden],m->dy[orden]);
+			SIGNAL(SEM_MEMORIA);
+			break;
+		}if(((m->dx[orden])<0)||((m->dx[orden]>79))){
+			m->r_perdidas++;
+			SIGNAL(SEM_MEMORIA);
+			break;
+		}
 		if(AVANCE_RANA_FIN(m->dx[orden],m->dy[orden])==FALSE){
 			fprintf(stderr, "Error al avanzar");
 		}
@@ -357,18 +374,14 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		if(m->dy[orden]==11){
 			m->r_salvadas++;
 			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
 			break;
 		}
-			if(((m->dx[orden])<0)||((m->dx[orden]>79))){
+		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_TRONCOS);
 			break;
 		}
 		SIGNAL(SEM_MEMORIA);
-		SIGNAL(SEM_TRONCOS);
-		
 	}
 
 	SIGNAL(SEM_MAX_PROCESOS);
@@ -382,20 +395,20 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 	 char texto[20]="no puedo saltar";
 	while(m->terminar){
 		for(fila=0; fila<7 && m->terminar;fila++){
-			WAIT(SEM_TRONCOS);
+			//WAIT(fila+10);
 		
-			if(!(m->terminar)){
+			/*if(!(m->terminar)){
 				
-				SIGNAL(SEM_MOVIMIENTO);
+				SIGNAL(fila+10);
 				break;
-			}
+			}*/
 		
 			WAIT(SEM_MEMORIA);
 				
 			
 			if(!(m->terminar)){
 				
-				SIGNAL(SEM_MOVIMIENTO);
+				SIGNAL(fila+10);
 				SIGNAL(SEM_MEMORIA);
 				break;
 			}
@@ -413,13 +426,14 @@ DWORD WINAPI TRONCOS( LPVOID parametro){
 			}
 			
 			SIGNAL(SEM_MEMORIA);
-			SIGNAL(SEM_MOVIMIENTO);
+			//SIGNAL(fila+10);
 
 			PAUSA();
 			
 		}
 	}
 }
+
 
 int cargar_libreria(int* fase_ext) {
     int error = 0, fase = 0;
