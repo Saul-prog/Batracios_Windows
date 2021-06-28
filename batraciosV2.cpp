@@ -232,7 +232,6 @@ int i;
 				break;
 			}
 			
-				fflush(stdout);
 			WAIT(SEM_MEMORIA);
 			if(!(m->terminar)){
 			
@@ -242,7 +241,6 @@ int i;
 				break;
 			}
 			
-				fflush(stdout);
 			if(m->id[i]==-2){
 				 WaitForSingleObject(m->pid[i], INFINITE);
 				 m->id[i]=0;		 
@@ -315,7 +313,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		}*/
 				
 		WAIT(SEM_MEMORIA);
-			
+	 	
 		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			

@@ -164,8 +164,15 @@ int main(int argc, char const* argv[])
 	idSemaforo[SEM_MADRE2]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MADRE3]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_MEMORIA]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCO0]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCO1]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCO2]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCO3]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCO4]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCO5]=CreateSemaphore( NULL, 1, 1, NULL);
+	idSemaforo[SEM_TRONCO6]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_TRONCOS]=CreateSemaphore( NULL, 1, 1, NULL);
-	idSemaforo[SEM_MOVIMIENTO]=CreateSemaphore( NULL, 0, 1, NULL);
+	idSemaforo[SEM_MOVIMIENTO]=CreateSemaphore( NULL, 1, 1, NULL);
 	idSemaforo[SEM_HILO]=CreateSemaphore( NULL, 0, 1, NULL);
 	
 	//Se crean las ranas madre
@@ -245,7 +252,6 @@ int i;
 				break;
 			}
 			
-				fflush(stdout);
 			WAIT(SEM_MEMORIA);
 			if(!(m->terminar)){
 			
@@ -255,7 +261,6 @@ int i;
 				break;
 			}
 			
-				fflush(stdout);
 			if(m->id[i]==-2){
 				 WaitForSingleObject(m->pid[i], INFINITE);
 				 m->id[i]=0;		 
@@ -271,6 +276,7 @@ int i;
 				m->r_nacidas++;
 				
 				WAIT(SEM_HILO);
+				SIGNAL(SEM_MOVIMIENTO);
 				SIGNAL(SEM_MEMORIA);
 			
 				
@@ -298,6 +304,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 	BOOL NOterminar=TRUE;
 	
 	SIGNAL(SEM_HILO);
+	WAIT(SEM_MOVIMIENTO);
 	while(m->terminar){
 		
 		if(m->dy[orden]==3){
@@ -339,7 +346,7 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		if(!(m->terminar)){
 			//SIGNAL(SEM_MEMORIA);
 			liberar(m->dy[orden]);
-				break;
+			break;
 		}
 	
 		if(PUEDO_SALTAR(m->dx[orden],m->dy[orden],ARRIBA)==TRUE) direccion=ARRIBA;
@@ -365,43 +372,18 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		liberar(m->dy[orden]-1);
 		PAUSA();
 		
-			if(m->dy[orden]==3){
-			WAIT(SEM_TRONCO0);
-			if(!(m->terminar)){
-				SIGNAL(SEM_TRONCO0);
-				break;
-			}
-		}
-		if(m->dy[orden]>3 && m->dy[orden]<10){
-			WAIT(m->dy[orden]+6);
-			if(!(m->terminar)){
-				SIGNAL(m->dy[orden]+6);
-				break;
-			}
-			WAIT(m->dy[orden]+7);
-			if(!(m->terminar)){
-				SIGNAL(m->dy[orden]+7);
-				break;
-			}
-		}
-		if(m->dy[orden]==10){
-			WAIT(SEM_TRONCO6);
-			if(!(m->terminar)){
-				SIGNAL(SEM_TRONCO6);
-				break;
-			}
-		}
+		WAIT(m->dx[orden]+6);
 		//WAIT(SEM_MEMORIA);
 		if(m->dy[orden]==11){
 			m->r_salvadas++;
 			AVANCE_RANA_FIN(m->dx[orden],m->dy[orden]);
 			//SIGNAL(SEM_MEMORIA);
-			liberar(m->dy[orden]);
+			SIGNAL(m->dy[orden]+6);
 			break;
 		}if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
 			//SIGNAL(SEM_MEMORIA);
-			liberar(m->dy[orden]);
+			SIGNAL(m->dy[orden]+6);
 			break;
 		}
 		if(AVANCE_RANA_FIN(m->dx[orden],m->dy[orden])==FALSE){
@@ -413,17 +395,17 @@ DWORD WINAPI rana_hija( LPVOID parametro){
 		}
 		if(m->dy[orden]==11){
 			m->r_salvadas++;
-			liberar(m->dy[orden]);
+			SIGNAL(m->dy[orden]+6);
 			//SIGNAL(SEM_MEMORIA);
 			break;
 		}
 		if(((m->dx[orden])<0)||((m->dx[orden]>79))){
 			m->r_perdidas++;
-			liberar(m->dy[orden]);
+			SIGNAL(m->dy[orden]+7);
 			//SIGNAL(SEM_MEMORIA);
 			break;
 		}
-		liberar(m->dy[orden]);
+		SIGNAL(m->dy[orden]+7);
 		//SIGNAL(SEM_MEMORIA);
 	}
 
